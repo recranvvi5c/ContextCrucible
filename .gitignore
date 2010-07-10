@@ -1,0 +1,6 @@
+# Rust
+/target
+**/*.rs.bk
+
+# Node / TypeScript
+explorer/node_modules
