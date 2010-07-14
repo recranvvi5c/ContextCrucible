@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 300" role="img" aria-label="contextcrucible: molten tokens pouring from a crucible into a budgeted mold">
+  <title>contextcrucible: the token foundry</title>
+  <desc>An animated industrial crucible tips molten "tokens" into a mold sized to a fixed budget; overflow sparks are deflected away, representing files rejected by the budget solver.</desc>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0b1020"/>
+      <stop offset="1" stop-color="#161d33"/>
+    </linearGradient>
+    <linearGradient id="molten" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff2b0"/>
+      <stop offset="0.5" stop-color="#ffb347"/>
+      <stop offset="1" stop-color="#ff5722"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ffcf6b" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#ffcf6b" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="steel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5b6478"/>
+      <stop offset="1" stop-color="#2c3242"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="800" height="300" fill="url(#sky)"/>
+
+  <!-- ambient furnace glow -->
+  <circle cx="250" cy="120" r="150" fill="url(#glow)">
+    <animate attributeName="r" values="140;165;140" dur="3.5s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.55;0.9;0.55" dur="3.5s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- title -->
+  <text x="400" y="40" text-anchor="middle" font-family="Consolas,Menlo,monospace" font-size="26" fill="#ffcf6b" letter-spacing="2">contextcrucible</text>
+  <text x="400" y="64" text-anchor="middle" font-family="Consolas,Menlo,monospace" font-size="12" fill="#8a93ad" letter-spacing="4">THE&#160;TOKEN&#160;FOUNDRY</text>
+
+  <!-- crucible, tilts to pour -->
+  <g transform="translate(230,150)">
+    <animateTransform attributeName="transform" type="rotate" values="0 40 40; -22 40 40; -22 40 40; 0 40 40" keyTimes="0;0.25;0.75;1" dur="6s" repeatCount="indefinite" additive="sum"/>
+    <path d="M0 0 L80 0 L70 70 Q40 90 10 70 Z" fill="url(#steel)" stroke="#1a1f2e" stroke-width="3"/>
+    <ellipse cx="40" cy="0" rx="40" ry="10" fill="#3a4152"/>
+    <ellipse cx="40" cy="0" rx="32" ry="7" fill="url(#molten)">
+      <animate attributeName="ry" values="7;5;7" dur="2s" repeatCount="indefinite"/>
+    </ellipse>
+  </g>
+
+  <!-- molten stream -->
+  <path d="M300 195 Q320 240 430 250" stroke="url(#molten)" stroke-width="8" fill="none" stroke-linecap="round" opacity="0.9">
+    <animate attributeName="stroke-width" values="8;11;8" dur="1.2s" repeatCount="indefinite"/>
+  </path>
+
+  <!-- the mold, labelled with the budget -->
+  <g transform="translate(430,235)">
+    <rect x="0" y="0" width="220" height="55" rx="6" fill="#1c2333" stroke="#3a4152" stroke-width="2"/>
+    <!-- fill level rises to the budget line -->
+    <clipPath id="moldClip"><rect x="4" y="4" width="212" height="47" rx="4"/></clipPath>
+    <g clip-path="url(#moldClip)">
+      <rect x="4" y="51" width="212" height="47" fill="url(#molten)">
