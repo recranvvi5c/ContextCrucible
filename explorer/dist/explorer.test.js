@@ -45,3 +45,51 @@ function sampleManifest() {
                 bytes: 600,
                 grade: 20.0,
                 language: "rust",
+                score_parts: { path: 0, query: 20, import: 0, symbol: 0 },
+                fill_rank: 1,
+                explanation: "included",
+            },
+            {
+                path: "main.py",
+                decision: "include",
+                tokens: 200,
+                bytes: 400,
+                grade: 12.0,
+                language: "python",
+                score_parts: { path: 0, query: 12, import: 0, symbol: 0 },
+                fill_rank: 2,
+                explanation: "included",
+            },
+            {
+                path: "config/secrets.yaml",
+                decision: "exclude:secret",
+                tokens: 100,
+                bytes: 200,
+                grade: 0,
+                language: "text",
+                score_parts: { path: 0, query: 0, import: 0, symbol: 0 },
+                secrets: [
+                    { rule: "aws-access-key-id", line: 8, confidence: 0.97, redacted: "AKIA…" },
+                ],
+                explanation: "quarantined",
+            },
+        ],
+        scan_rejected: [
+            { path: "web/bundle.min.js", decision: "exclude:scan", bytes: 174, scan_reason: "generated:suffix" },
+        ],
+    };
+}
+test("parseManifest accepts a well-formed manifest", () => {
+    const json = JSON.stringify(sampleManifest());
+    const m = parseManifest(json);
+    assert.equal(m.summary.label, "test");
+    assert.equal(m.files.length, 4);
+});
+test("parseManifest rejects invalid JSON", () => {
+    assert.throws(() => parseManifest("{not json"), /not valid JSON/);
+});
+test("parseManifest rejects a manifest without files", () => {
+    assert.throws(() => parseManifest('{"summary":{}}'), /files/);
+});
+test("includedFiles returns only includes in fill order", () => {
+    const m = sampleManifest();
