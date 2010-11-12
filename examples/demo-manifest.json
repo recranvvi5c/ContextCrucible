@@ -1,0 +1,39 @@
+{
+  "summary": {
+    "tool": "contextcrucible",
+    "version": "0.4.0",
+    "label": "demo",
+    "query": "budget solver knapsack",
+    "budget_tokens": 1200,
+    "tokens_used": 1178,
+    "budget_utilization": 0.9817,
+    "captured_value": 125.2500,
+    "min_score": 0.0000,
+    "solver_method": "dp",
+    "counts": {
+      "included": 3,
+      "excluded_secret": 1,
+      "excluded_budget": 1,
+      "excluded_low_score": 0,
+      "excluded_scan": 1
+    }
+  },
+  "files": [
+    {
+      "path": "README.md",
+      "decision": "include",
+      "tokens": 311,
+      "bytes": 670,
+      "grade": 30.3333,
+      "language": "text",
+      "score_parts": {
+        "path": 0.0000,
+        "query": 30.3333,
+        "import": 0.0000,
+        "symbol": 0.0000
+      },
+      "fill_rank": 1,
+      "explanation": "included at fill rank 1 — grade 30.3 (path 0.0/query 30.3/import 0.0/symbol 0.0) for 311 tokens"
+    },
+    {
+      "path": "config/secrets.yaml",
