@@ -19,25 +19,3 @@ pub mod budget;
 pub mod compare;
 pub mod json;
 pub mod pack;
-pub mod scan;
-pub mod score;
-pub mod secrets;
-pub mod tokens;
-
-/// Library version, surfaced by the CLI `--version` flag and embedded in packs.
-pub const VERSION: &str = env!("CARGO_PKG_VERSION");
-
-/// A single candidate file discovered during a scan, carried through the
-/// pipeline and progressively enriched with assay / grade / secret data.
-#[derive(Debug, Clone)]
-pub struct Candidate {
-    /// Repository-relative path using forward slashes.
-    pub rel_path: String,
-    /// Raw byte length on disk.
-    pub bytes: u64,
-    /// The file's textual content (only present for retained text files).
-    pub content: String,
-    /// Estimated token mass from [`tokens::estimate`].
-    pub tokens: u64,
-    /// Relevance grade in the range `0.0..=100.0` from [`score`].
-    pub score: f64,
