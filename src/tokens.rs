@@ -26,3 +26,31 @@ pub fn estimate(text: &str) -> u64 {
 
     let flush_word = |run_len: u32, tokens: &mut u64| {
         if run_len == 0 {
+            return;
+        }
+        // Roughly four characters per sub-token, minimum one.
+        *tokens += (run_len.div_ceil(4)).max(1) as u64;
+    };
+
+    for ch in text.chars() {
+        if ch.is_alphanumeric() {
+            if in_space {
+                in_space = false;
+            }
+            run_len += 1;
+        } else if ch.is_whitespace() {
+            flush_word(run_len, &mut tokens);
+            run_len = 0;
+            if !in_space {
+                // A whitespace run is cheap but not free.
+                tokens += 1;
+                in_space = true;
+            }
+        } else {
+            // Punctuation / symbol: flush any pending word then count the symbol.
+            flush_word(run_len, &mut tokens);
+            run_len = 0;
+            in_space = false;
+            tokens += 1;
+        }
+    }
