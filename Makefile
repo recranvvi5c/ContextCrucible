@@ -15,3 +15,21 @@ all: build test explorer-test
 build:
 	$(CARGO) build
 
+## release: compile the optimised release binary
+release:
+	$(CARGO) build --release
+
+## test: run all Rust unit + integration tests
+test:
+	$(CARGO) test
+
+## fmt: format the Rust sources
+fmt:
+	$(CARGO) fmt
+
+## clippy: lint the Rust sources (if clippy is installed)
+clippy:
+	$(CARGO) clippy --all-targets -- -D warnings
+
+## explorer: build the TypeScript explorer
+explorer:
