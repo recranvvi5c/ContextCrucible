@@ -110,3 +110,115 @@ pub struct RejectedFile {
 /// Combined scan result.
 #[derive(Debug, Default)]
 pub struct ScanResult {
+    pub kept: Vec<ScannedFile>,
+    pub rejected: Vec<RejectedFile>,
+}
+
+/// Walk `root` and classify every regular file. Deterministic ordering.
+pub fn scan(root: &Path, cfg: &ScanConfig) -> io::Result<ScanResult> {
+    let mut result = ScanResult::default();
+    let mut stack: Vec<PathBuf> = vec![root.to_path_buf()];
+
+    while let Some(dir) = stack.pop() {
+        let mut entries: Vec<PathBuf> = match fs::read_dir(&dir) {
+            Ok(rd) => rd.filter_map(|e| e.ok().map(|e| e.path())).collect(),
+            Err(_) => continue,
+        };
+        // Sort for deterministic traversal (directories and files interleaved
+        // by path string; we push dirs onto the stack so we reverse-sort to
+        // keep overall lexicographic emission order stable).
+        entries.sort();
+        // Process files first (in order), collect dirs to recurse afterwards.
+        let mut subdirs: Vec<PathBuf> = Vec::new();
+        for path in entries {
+            let file_type = match fs::symlink_metadata(&path) {
+                Ok(m) => m.file_type(),
+                Err(_) => continue,
+            };
+            if file_type.is_symlink() {
+                // Never follow symlinks: avoids cycles and escaping the root.
+                continue;
+            }
+            if file_type.is_dir() {
+                let name = file_name_of(&path);
+                if VENDOR_DIRS.contains(&name.as_str()) {
+                    continue;
+                }
+                subdirs.push(path);
+                continue;
+            }
+            if !file_type.is_file() {
+                continue;
+            }
+            classify_file(root, &path, cfg, &mut result)?;
+        }
+        // Push subdirs in reverse so the smallest path is popped first.
+        subdirs.sort();
+        for d in subdirs.into_iter().rev() {
+            stack.push(d);
+        }
+    }
+
+    result.kept.sort_by(|a, b| a.rel_path.cmp(&b.rel_path));
+    result.rejected.sort_by(|a, b| a.rel_path.cmp(&b.rel_path));
+    Ok(result)
+}
+
+fn classify_file(
+    root: &Path,
+    path: &Path,
+    cfg: &ScanConfig,
+    result: &mut ScanResult,
+) -> io::Result<()> {
+    let rel = rel_path(root, path);
+    let bytes = fs::metadata(path).map(|m| m.len()).unwrap_or(0);
+    let name = file_name_of(path);
+    let lower = name.to_ascii_lowercase();
+
+    if GENERATED_NAMES
+        .iter()
+        .any(|g| g.eq_ignore_ascii_case(&name))
+    {
+        result.rejected.push(RejectedFile {
+            rel_path: rel,
+            bytes,
+            reason: "generated:name".into(),
+        });
+        return Ok(());
+    }
+    if GENERATED_SUFFIXES.iter().any(|s| lower.ends_with(s)) {
+        result.rejected.push(RejectedFile {
+            rel_path: rel,
+            bytes,
+            reason: "generated:suffix".into(),
+        });
+        return Ok(());
+    }
+    if let Some(ext) = extension_of(&lower) {
+        if BINARY_EXTS.contains(&ext.as_str()) {
+            result.rejected.push(RejectedFile {
+                rel_path: rel,
+                bytes,
+                reason: "binary:extension".into(),
+            });
+            return Ok(());
+        }
+    }
+    if bytes > cfg.max_bytes {
+        result.rejected.push(RejectedFile {
+            rel_path: rel,
+            bytes,
+            reason: format!("too-large:{}b", bytes),
+        });
+        return Ok(());
+    }
+
+    // Sample the head for binary detection before committing to a full read.
+    let sample = read_sample(path, cfg.sample_bytes)?;
+    if is_binary_sample(&sample, cfg.binary_ratio) {
+        result.rejected.push(RejectedFile {
+            rel_path: rel,
+            bytes,
+            reason: "binary:content".into(),
+        });
+        return Ok(());
