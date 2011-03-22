@@ -16,21 +16,3 @@ export interface ManifestFile {
     grade: number;
     language: string;
     score_parts: {
-        path: number;
-        query: number;
-        import: number;
-        symbol: number;
-    };
-    fill_rank?: number;
-    secrets?: Array<{
-        rule: string;
-        line: number;
-        confidence: number;
-        redacted: string;
-    }>;
-    scan_reason?: string;
-    explanation: string;
-}
-/** The summary block of a manifest. */
-export interface ManifestSummary {
-    tool: string;
