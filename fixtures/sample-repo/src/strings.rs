@@ -9,14 +9,3 @@ pub fn human_size(bytes: u64) -> String {
     while value >= 1024.0 && unit < UNITS.len() - 1 {
         value /= 1024.0;
         unit += 1;
-    }
-    format!("{:.1} {}", value, UNITS[unit])
-}
-
-/// Title-case a whitespace-separated string.
-pub fn title_case(s: &str) -> String {
-    s.split_whitespace()
-        .map(|w| {
-            let mut chars = w.chars();
-            match chars.next() {
-                Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
