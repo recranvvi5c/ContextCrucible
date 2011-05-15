@@ -19,24 +19,3 @@ function main(argv) {
     }
     let asJson = false;
     let path;
-    for (const a of args) {
-        if (a === "--json") {
-            asJson = true;
-        }
-        else {
-            path = a;
-        }
-    }
-    if (!path) {
-        process.stderr.write("crucible-explorer: missing manifest path\n");
-        return 1;
-    }
-    let text;
-    try {
-        text = readFileSync(path, "utf8");
-    }
-    catch (err) {
-        process.stderr.write(`crucible-explorer: cannot read ${path}: ${err.message}\n`);
-        return 1;
-    }
-    let manifest;

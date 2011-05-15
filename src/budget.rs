@@ -120,3 +120,64 @@ fn solve_dp(items: &[&Item], budget: u64, bucket: u64) -> Solution {
                 }
             }
         }
+    }
+
+    // Reconstruct selection.
+    let mut w = cap;
+    let mut chosen_idx: Vec<usize> = Vec::new();
+    for i in (0..n).rev() {
+        if w >= costs[i] && keep[i][w] {
+            chosen_idx.push(i);
+            w -= costs[i];
+        }
+    }
+    // chosen_idx is in reverse item order; restore original (priority) order.
+    chosen_idx.reverse();
+
+    // Verify against the true (unquantised) budget and drop any overflow caused
+    // by ceil rounding, lowest-value-first, to guarantee the hard bound holds.
+    let mut selected: Vec<&Item> = chosen_idx.iter().map(|&i| items[i]).collect();
+    enforce_hard_budget(&mut selected, budget);
+
+    finalize(selected, "dp")
+}
+
+/// Deterministic value-density greedy fallback.
+fn solve_greedy(items: &[&Item], budget: u64) -> Solution {
+    let mut ranked: Vec<&Item> = items.to_vec();
+    ranked.sort_by(|a, b| {
+        let da = a.score / (a.tokens.max(1) as f64);
+        let db = b.score / (b.tokens.max(1) as f64);
+        db.partial_cmp(&da)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then(
+                b.score
+                    .partial_cmp(&a.score)
+                    .unwrap_or(std::cmp::Ordering::Equal),
+            )
+            .then(a.tokens.cmp(&b.tokens))
+            .then(a.id.cmp(&b.id))
+    });
+
+    let mut selected: Vec<&Item> = Vec::new();
+    let mut used = 0u64;
+    for it in ranked {
+        if used + it.tokens <= budget {
+            used += it.tokens;
+            selected.push(it);
+        }
+    }
+    finalize(selected, "greedy")
+}
+
+/// Drop items (lowest value first) until the true token sum fits the budget.
+fn enforce_hard_budget(selected: &mut Vec<&Item>, budget: u64) {
+    let mut total: u64 = selected.iter().map(|i| i.tokens).sum();
+    while total > budget {
+        // Remove the least valuable item.
+        if let Some((idx, _)) = selected.iter().enumerate().min_by(|(_, a), (_, b)| {
+            a.score
+                .partial_cmp(&b.score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then(b.tokens.cmp(&a.tokens))
+        }) {
