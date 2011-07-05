@@ -246,3 +246,127 @@ pub fn render_manifest(pack: &Pack) -> String {
     for entry in &pack.entries {
         let c = &entry.candidate;
         let rank = included
+            .iter()
+            .position(|e| e.candidate.rel_path == c.rel_path);
+        let mut obj = vec![
+            ("path".into(), Json::s(&c.rel_path)),
+            ("decision".into(), Json::s(entry.decision.code())),
+            ("tokens".into(), Json::Int(c.tokens as i64)),
+            ("bytes".into(), Json::Int(c.bytes as i64)),
+            ("grade".into(), Json::Float(c.score)),
+            ("language".into(), Json::s(&c.language)),
+            (
+                "score_parts".into(),
+                Json::Object(vec![
+                    ("path".into(), Json::Float(c.score_parts.path)),
+                    ("query".into(), Json::Float(c.score_parts.query)),
+                    ("import".into(), Json::Float(c.score_parts.import)),
+                    ("symbol".into(), Json::Float(c.score_parts.symbol)),
+                ]),
+            ),
+        ];
+        if let Some(r) = rank {
+            obj.push(("fill_rank".into(), Json::Int(r as i64)));
+        }
+        if !c.secrets.is_empty() {
+            let findings: Vec<Json> = c
+                .secrets
+                .iter()
+                .map(|f| {
+                    Json::Object(vec![
+                        ("rule".into(), Json::s(&f.rule)),
+                        ("line".into(), Json::Int(f.line as i64)),
+                        ("confidence".into(), Json::Float(f.confidence)),
+                        ("redacted".into(), Json::s(&f.redacted)),
+                    ])
+                })
+                .collect();
+            obj.push(("secrets".into(), Json::Array(findings)));
+        }
+        if let Decision::ExcludedScan { reason } = &entry.decision {
+            obj.push(("scan_reason".into(), Json::s(reason)));
+        }
+        obj.push(("explanation".into(), Json::s(explain(entry, rank))));
+        file_entries.push(Json::Object(obj));
+    }
+
+    // Scan-rejected files (never became candidates).
+    let mut rejected_entries: Vec<Json> = Vec::new();
+    for r in &pack.scan_rejected {
+        rejected_entries.push(Json::Object(vec![
+            ("path".into(), Json::s(&r.rel_path)),
+            ("decision".into(), Json::s("exclude:scan")),
+            ("bytes".into(), Json::Int(r.bytes as i64)),
+            ("scan_reason".into(), Json::s(&r.reason)),
+        ]));
+    }
+
+    let root = Json::Object(vec![
+        ("summary".into(), summary),
+        ("files".into(), Json::Array(file_entries)),
+        ("scan_rejected".into(), Json::Array(rejected_entries)),
+    ]);
+    root.to_pretty()
+}
+
+/// Budget utilisation in `0.0..=1.0`.
+pub fn utilization(pack: &Pack) -> f64 {
+    if pack.options_budget == 0 {
+        0.0
+    } else {
+        pack.tokens_used as f64 / pack.options_budget as f64
+    }
+}
+
+fn explain(entry: &Entry, rank: Option<usize>) -> String {
+    let c = &entry.candidate;
+    match &entry.decision {
+        Decision::Included { .. } => format!(
+            "included at fill rank {} — grade {:.1} (path {:.1}/query {:.1}/import {:.1}/symbol {:.1}) for {} tokens",
+            rank.unwrap_or(0),
+            c.score,
+            c.score_parts.path,
+            c.score_parts.query,
+            c.score_parts.import,
+            c.score_parts.symbol,
+            c.tokens
+        ),
+        Decision::ExcludedSecret => format!(
+            "quarantined — {} secret finding(s), highest confidence {:.2}",
+            c.secrets.len(),
+            c.secrets.iter().map(|f| f.confidence).fold(0.0, f64::max)
+        ),
+        Decision::ExcludedBudget => format!(
+            "not poured — grade {:.1} at {} tokens lost the budget contest",
+            c.score, c.tokens
+        ),
+        Decision::ExcludedLowScore => format!(
+            "below floor — grade {:.1} < min_score",
+            c.score
+        ),
+        Decision::ExcludedScan { reason } => format!("rejected during scan — {}", reason),
+    }
+}
+
+/// Best-effort language label from content shape / shebang.
+pub fn detect_language(content: &str) -> String {
+    let head = content.trim_start();
+    if head.starts_with("#!") {
+        if head.contains("python") {
+            return "python".into();
+        }
+        if head.contains("node") {
+            return "javascript".into();
+        }
+        if head.contains("bash") || head.contains("/sh") {
+            return "shell".into();
+        }
+    }
+    if head.contains("fn main(") || head.contains("pub fn ") || head.contains("impl ") {
+        return "rust".into();
+    }
+    if head.contains("interface ") || head.contains(": string") || head.contains("export const") {
+        return "typescript".into();
+    }
+    if head.contains("def ") && head.contains(':') {
+        return "python".into();
