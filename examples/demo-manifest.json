@@ -37,3 +37,42 @@
     },
     {
       "path": "config/secrets.yaml",
+      "decision": "exclude:secret",
+      "tokens": 155,
+      "bytes": 354,
+      "grade": 0.0000,
+      "language": "text",
+      "score_parts": {
+        "path": 0.0000,
+        "query": 0.0000,
+        "import": 0.0000,
+        "symbol": 0.0000
+      },
+      "secrets": [
+        {
+          "rule": "aws-access-key-id",
+          "line": 8,
+          "confidence": 0.9700,
+          "redacted": "AKIA…[redacted:20 chars]"
+        }
+      ],
+      "explanation": "quarantined — 1 secret finding(s), highest confidence 0.97"
+    },
+    {
+      "path": "main.py",
+      "decision": "include",
+      "tokens": 321,
+      "bytes": 620,
+      "grade": 11.6667,
+      "language": "python",
+      "score_parts": {
+        "path": 0.0000,
+        "query": 11.6667,
+        "import": 0.0000,
+        "symbol": 0.0000
+      },
+      "fill_rank": 2,
+      "explanation": "included at fill rank 2 — grade 11.7 (path 0.0/query 11.7/import 0.0/symbol 0.0) for 321 tokens"
+    },
+    {
+      "path": "src/budget_solver.rs",
