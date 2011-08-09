@@ -95,3 +95,35 @@ fn budget_is_a_hard_bound() {
         );
     }
 }
+
+#[test]
+fn compilation_is_deterministic() {
+    let a = compile(1500, "budget solver", "det-a");
+    let b = compile(1500, "budget solver", "det-b");
+    let ain: Vec<String> = a
+        .included()
+        .iter()
+        .map(|e| e.candidate.rel_path.clone())
+        .collect();
+    let bin: Vec<String> = b
+        .included()
+        .iter()
+        .map(|e| e.candidate.rel_path.clone())
+        .collect();
+    assert_eq!(ain, bin);
+    assert_eq!(a.tokens_used, b.tokens_used);
+}
+
+#[test]
+fn manifest_explains_every_candidate() {
+    let pack = compile(1500, "budget", "manifest");
+    let manifest = pack::render_manifest(&pack);
+    // Every kept candidate path should appear in the manifest.
+    for entry in &pack.entries {
+        assert!(
+            manifest.contains(&entry.candidate.rel_path),
+            "manifest missing {}",
+            entry.candidate.rel_path
+        );
+    }
+    assert!(manifest.contains("\"explanation\""));
