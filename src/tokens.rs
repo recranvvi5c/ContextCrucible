@@ -54,3 +54,31 @@ pub fn estimate(text: &str) -> u64 {
             tokens += 1;
         }
     }
+    flush_word(run_len, &mut tokens);
+    tokens.max(1)
+}
+
+/// Estimate tokens for a slice of already-loaded candidate contents. Used by the
+/// budget solver to size prospective pours quickly.
+pub fn estimate_all<'a, I: IntoIterator<Item = &'a str>>(chunks: I) -> u64 {
+    chunks.into_iter().map(estimate).sum()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn empty_is_zero() {
+        assert_eq!(estimate(""), 0);
+    }
+
+    #[test]
+    fn single_word_is_at_least_one() {
+        assert_eq!(estimate("fn"), 1);
+        assert_eq!(estimate("x"), 1);
+    }
+
+    #[test]
+    fn long_identifier_fragments() {
+        // 16 chars -> 4 sub-tokens.

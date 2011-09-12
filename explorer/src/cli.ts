@@ -35,22 +35,3 @@ function main(argv: string[]): number {
     } else {
       path = a;
     }
-  }
-  if (!path) {
-    process.stderr.write("crucible-explorer: missing manifest path\n");
-    return 1;
-  }
-
-  let text: string;
-  try {
-    text = readFileSync(path, "utf8");
-  } catch (err) {
-    process.stderr.write(
-      `crucible-explorer: cannot read ${path}: ${(err as Error).message}\n`,
-    );
-    return 1;
-  }
-
-  let manifest;
-  try {
-    manifest = parseManifest(text);
