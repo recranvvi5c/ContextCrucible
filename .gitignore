@@ -1,3 +1,13 @@
 # Rust
 /target
 **/*.rs.bk
+
+# Node / TypeScript
+explorer/node_modules
+explorer/dist
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+
+# CI scratch

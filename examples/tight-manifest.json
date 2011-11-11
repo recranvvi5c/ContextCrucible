@@ -1,0 +1,57 @@
+{
+  "summary": {
+    "tool": "contextcrucible",
+    "version": "0.4.0",
+    "label": "tight",
+    "query": "budget solver knapsack",
+    "budget_tokens": 600,
+    "tokens_used": 546,
+    "budget_utilization": 0.9100,
+    "captured_value": 83.2500,
+    "min_score": 0.0000,
+    "solver_method": "dp",
+    "counts": {
+      "included": 1,
+      "excluded_secret": 1,
+      "excluded_budget": 3,
+      "excluded_low_score": 0,
+      "excluded_scan": 1
+    }
+  },
+  "files": [
+    {
+      "path": "README.md",
+      "decision": "exclude:budget",
+      "tokens": 311,
+      "bytes": 670,
+      "grade": 30.3333,
+      "language": "text",
+      "score_parts": {
+        "path": 0.0000,
+        "query": 30.3333,
+        "import": 0.0000,
+        "symbol": 0.0000
+      },
+      "explanation": "not poured — grade 30.3 at 311 tokens lost the budget contest"
+    },
+    {
+      "path": "config/secrets.yaml",
+      "decision": "exclude:secret",
+      "tokens": 155,
+      "bytes": 354,
+      "grade": 0.0000,
+      "language": "text",
+      "score_parts": {
+        "path": 0.0000,
+        "query": 0.0000,
+        "import": 0.0000,
+        "symbol": 0.0000
+      },
+      "secrets": [
+        {
+          "rule": "aws-access-key-id",
+          "line": 8,
+          "confidence": 0.9700,
+          "redacted": "AKIA…[redacted:20 chars]"
+        }
+      ],
