@@ -16,22 +16,3 @@ import {
 } from "./explorer.js";
 
 function main(argv: string[]): number {
-  const args = argv.slice(2);
-  if (args.length === 0 || args[0] === "-h" || args[0] === "--help") {
-    process.stdout.write(
-      "crucible-explorer — visualise a contextcrucible manifest\n\n" +
-        "USAGE:\n" +
-        "  crucible-explorer <manifest.json>\n" +
-        "  crucible-explorer --json <manifest.json>\n",
-    );
-    return args.length === 0 ? 1 : 0;
-  }
-
-  let asJson = false;
-  let path: string | undefined;
-  for (const a of args) {
-    if (a === "--json") {
-      asJson = true;
-    } else {
-      path = a;
-    }
