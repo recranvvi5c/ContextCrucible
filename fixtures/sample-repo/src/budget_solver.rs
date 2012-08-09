@@ -9,15 +9,3 @@ pub fn allocate_budget(total: u64, weights: &HashMap<String, f64>) -> HashMap<St
     let mut out = HashMap::new();
     if sum <= 0.0 {
         return out;
-    }
-    for (name, w) in weights {
-        let share = ((*w / sum) * total as f64).floor() as u64;
-        out.insert(name.clone(), share);
-    }
-    out
-}
-
-/// A knapsack-style selector: choose items maximising value under a budget.
-pub fn knapsack(items: &[(u64, f64)], budget: u64) -> f64 {
-    let mut dp = vec![0.0f64; (budget + 1) as usize];
-    for &(cost, value) in items {
