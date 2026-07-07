@@ -23,3 +23,29 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 - Ceil-rounding in the DP could momentarily overshoot the budget during
+  reconstruction; a post-pass now trims lowest-value items to restore the bound.
+
+## [0.3.0] - 2026-08-24
+
+### Added
+- Secret detection with redaction: AWS keys, PEM private keys, GitHub / Slack
+  tokens, JWTs, and a generic high-entropy assignment heuristic. Findings above
+  the quarantine threshold exclude the whole file.
+- Relevance scoring across four signals: path, query frequency, import graph,
+  and symbol definitions.
+
+### Changed
+- Scanner now samples file heads for binary detection instead of reading whole
+  files, and rejects known generated / vendor paths up front.
+
+## [0.2.0] - 2026-08-17
+
+### Added
+- Deterministic token estimator with a transparent segmentation heuristic.
+- JSON manifest emission via a dependency-free writer.
+
+## [0.1.0] - 2026-08-10
+
+### Added
+- Initial repository scanner and a naive greedy budget packer.
+- `crucible compile` and `crucible scan` subcommands.
