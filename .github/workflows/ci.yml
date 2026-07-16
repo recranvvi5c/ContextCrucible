@@ -19,3 +19,47 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
+      - name: Format check
+        run: cargo fmt --all -- --check
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Build
+        run: cargo build --verbose
+      - name: Test
+        run: cargo test --verbose
+
+  explorer:
+    name: Explorer (TypeScript)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: explorer
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install
+        run: npm install --no-audit --no-fund
+      - name: Build
+        run: npm run build
+      - name: Test
+        run: npm test
+
+  determinism:
+    name: Determinism smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Two identical compiles must match
+        run: |
+          cargo run --quiet -- compile --path fixtures/sample-repo \
+            --budget 1200 --query "budget solver" --label ci \
+            --manifest a.json --out a.txt
+          cargo run --quiet -- compile --path fixtures/sample-repo \
+            --budget 1200 --query "budget solver" --label ci \
+            --manifest b.json --out b.txt
+          diff a.json b.json
+          diff a.txt b.txt
+          echo "deterministic ✔"
