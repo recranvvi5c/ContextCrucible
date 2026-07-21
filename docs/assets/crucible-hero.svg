@@ -26,3 +26,61 @@
   <!-- ambient furnace glow -->
   <circle cx="250" cy="120" r="150" fill="url(#glow)">
     <animate attributeName="r" values="140;165;140" dur="3.5s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.55;0.9;0.55" dur="3.5s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- title -->
+  <text x="400" y="40" text-anchor="middle" font-family="Consolas,Menlo,monospace" font-size="26" fill="#ffcf6b" letter-spacing="2">contextcrucible</text>
+  <text x="400" y="64" text-anchor="middle" font-family="Consolas,Menlo,monospace" font-size="12" fill="#8a93ad" letter-spacing="4">THE&#160;TOKEN&#160;FOUNDRY</text>
+
+  <!-- crucible, tilts to pour -->
+  <g transform="translate(230,150)">
+    <animateTransform attributeName="transform" type="rotate" values="0 40 40; -22 40 40; -22 40 40; 0 40 40" keyTimes="0;0.25;0.75;1" dur="6s" repeatCount="indefinite" additive="sum"/>
+    <path d="M0 0 L80 0 L70 70 Q40 90 10 70 Z" fill="url(#steel)" stroke="#1a1f2e" stroke-width="3"/>
+    <ellipse cx="40" cy="0" rx="40" ry="10" fill="#3a4152"/>
+    <ellipse cx="40" cy="0" rx="32" ry="7" fill="url(#molten)">
+      <animate attributeName="ry" values="7;5;7" dur="2s" repeatCount="indefinite"/>
+    </ellipse>
+  </g>
+
+  <!-- molten stream -->
+  <path d="M300 195 Q320 240 430 250" stroke="url(#molten)" stroke-width="8" fill="none" stroke-linecap="round" opacity="0.9">
+    <animate attributeName="stroke-width" values="8;11;8" dur="1.2s" repeatCount="indefinite"/>
+  </path>
+
+  <!-- the mold, labelled with the budget -->
+  <g transform="translate(430,235)">
+    <rect x="0" y="0" width="220" height="55" rx="6" fill="#1c2333" stroke="#3a4152" stroke-width="2"/>
+    <!-- fill level rises to the budget line -->
+    <clipPath id="moldClip"><rect x="4" y="4" width="212" height="47" rx="4"/></clipPath>
+    <g clip-path="url(#moldClip)">
+      <rect x="4" y="51" width="212" height="47" fill="url(#molten)">
+        <animate attributeName="y" values="51;10;10;51" keyTimes="0;0.45;0.85;1" dur="6s" repeatCount="indefinite"/>
+        <animate attributeName="height" values="0;41;41;0" keyTimes="0;0.45;0.85;1" dur="6s" repeatCount="indefinite"/>
+      </rect>
+    </g>
+    <line x1="0" y1="10" x2="220" y2="10" stroke="#ff5252" stroke-width="1.5" stroke-dasharray="5 4"/>
+    <text x="226" y="14" font-family="Consolas,Menlo,monospace" font-size="10" fill="#ff8a80">budget</text>
+    <text x="110" y="72" text-anchor="middle" font-family="Consolas,Menlo,monospace" font-size="11" fill="#8a93ad">context pack</text>
+  </g>
+
+  <!-- rejected sparks fly off (secrets / overflow) -->
+  <g fill="#ffd54f">
+    <circle cx="330" cy="215" r="2.5">
+      <animate attributeName="cx" values="330;300;270" dur="1.4s" repeatCount="indefinite"/>
+      <animate attributeName="cy" values="215;190;250" dur="1.4s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="1;0.4;0" dur="1.4s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="345" cy="225" r="2">
+      <animate attributeName="cx" values="345;380;410" dur="1.7s" repeatCount="indefinite"/>
+      <animate attributeName="cy" values="225;200;270" dur="1.7s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="1;0.5;0" dur="1.7s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="335" cy="230" r="1.8">
+      <animate attributeName="cx" values="335;315;295" dur="1.1s" repeatCount="indefinite"/>
+      <animate attributeName="cy" values="230;205;255" dur="1.1s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="1;0.3;0" dur="1.1s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+  <text x="270" y="285" text-anchor="middle" font-family="Consolas,Menlo,monospace" font-size="10" fill="#ff8a80">rejected slag → secrets · vendor · over-budget</text>
+</svg>
