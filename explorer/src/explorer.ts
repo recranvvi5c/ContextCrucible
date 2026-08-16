@@ -124,3 +124,130 @@ export function allocationByDirectory(manifest: Manifest): AllocationBucket[] {
     const cur = groups.get(key) ?? { tokens: 0, files: 0 };
     cur.tokens += f.tokens;
     cur.files += 1;
+    groups.set(key, cur);
+  }
+  const buckets: AllocationBucket[] = [];
+  for (const [key, v] of groups) {
+    buckets.push({
+      key,
+      tokens: v.tokens,
+      files: v.files,
+      share: total === 0 ? 0 : v.tokens / total,
+    });
+  }
+  // Deterministic ordering: largest allocation first, ties broken by name.
+  buckets.sort((a, b) => b.tokens - a.tokens || a.key.localeCompare(b.key));
+  return buckets;
+}
+
+/** Aggregate token allocation grouped by detected language. */
+export function allocationByLanguage(manifest: Manifest): AllocationBucket[] {
+  const included = includedFiles(manifest);
+  const total = included.reduce((sum, f) => sum + f.tokens, 0);
+  const groups = new Map<string, { tokens: number; files: number }>();
+  for (const f of included) {
+    const cur = groups.get(f.language) ?? { tokens: 0, files: 0 };
+    cur.tokens += f.tokens;
+    cur.files += 1;
+    groups.set(f.language, cur);
+  }
+  const buckets: AllocationBucket[] = [];
+  for (const [key, v] of groups) {
+    buckets.push({
+      key,
+      tokens: v.tokens,
+      files: v.files,
+      share: total === 0 ? 0 : v.tokens / total,
+    });
+  }
+  buckets.sort((a, b) => b.tokens - a.tokens || a.key.localeCompare(b.key));
+  return buckets;
+}
+
+/** Render a fixed-width horizontal bar for a fractional value in [0,1]. */
+export function bar(fraction: number, width = 30): string {
+  const clamped = Math.max(0, Math.min(1, fraction));
+  const filled = Math.round(clamped * width);
+  return "█".repeat(filled) + "·".repeat(width - filled);
+}
+
+/** Right-pad a string to a given width (deterministic, no locale effects). */
+function pad(s: string, width: number): string {
+  return s.length >= width ? s : s + " ".repeat(width - s.length);
+}
+
+/** Left-pad a number to a given width. */
+function lpad(n: number | string, width: number): string {
+  const s = String(n);
+  return s.length >= width ? s : " ".repeat(width - s.length) + s;
+}
+
+/**
+ * Render a full textual report of a pack allocation, suitable for a terminal.
+ * Pure function of the manifest — identical input yields identical output.
+ */
+export function renderReport(manifest: Manifest): string {
+  const s = manifest.summary;
+  const lines: string[] = [];
+  lines.push("╔══════════════════════════════════════════════════════════════╗");
+  lines.push(`║ contextcrucible pack :: ${pad(s.label, 38)}║`);
+  lines.push("╚══════════════════════════════════════════════════════════════╝");
+  lines.push(`  query          : ${s.query || "(none)"}`);
+  lines.push(`  solver         : ${s.solver_method}`);
+  lines.push(
+    `  budget         : ${s.tokens_used} / ${s.budget_tokens} tokens  ` +
+      `(${(s.budget_utilization * 100).toFixed(1)}% utilised)`,
+  );
+  lines.push(`  captured value : ${s.captured_value.toFixed(1)}`);
+  lines.push(
+    `  decisions      : ${s.counts.included} in · ` +
+      `${s.counts.excluded_secret} secret · ` +
+      `${s.counts.excluded_budget} budget · ` +
+      `${s.counts.excluded_low_score} low-score · ` +
+      `${s.counts.excluded_scan} scan`,
+  );
+  lines.push("");
+
+  lines.push("  Allocation by directory");
+  lines.push("  " + "─".repeat(60));
+  for (const b of allocationByDirectory(manifest)) {
+    lines.push(
+      `  ${pad(b.key, 14)} ${bar(b.share)} ${lpad(b.tokens, 6)}t ` +
+        `${lpad((b.share * 100).toFixed(1) + "%", 6)} (${b.files})`,
+    );
+  }
+  lines.push("");
+
+  lines.push("  Allocation by language");
+  lines.push("  " + "─".repeat(60));
+  for (const b of allocationByLanguage(manifest)) {
+    lines.push(
+      `  ${pad(b.key, 14)} ${bar(b.share)} ${lpad(b.tokens, 6)}t ` +
+        `${lpad((b.share * 100).toFixed(1) + "%", 6)} (${b.files})`,
+    );
+  }
+  lines.push("");
+
+  lines.push("  Included files (fill order)");
+  lines.push("  " + "─".repeat(60));
+  for (const f of includedFiles(manifest)) {
+    lines.push(
+      `  #${lpad(f.fill_rank ?? 0, 2)} ${pad(f.path, 34)} ` +
+        `${lpad(f.tokens, 6)}t  grade ${lpad(f.grade.toFixed(1), 5)}`,
+    );
+  }
+
+  const secretFiles = manifest.files.filter((f) => f.decision === "exclude:secret");
+  if (secretFiles.length > 0) {
+    lines.push("");
+    lines.push("  Quarantined (secrets)");
+    lines.push("  " + "─".repeat(60));
+    for (const f of secretFiles) {
+      const rule = f.secrets && f.secrets[0] ? f.secrets[0].rule : "unknown";
+      lines.push(`  ! ${pad(f.path, 34)} ${rule}`);
+    }
+  }
+
+  lines.push("");
+  return lines.join("\n");
+}
