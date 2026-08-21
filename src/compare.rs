@@ -123,3 +123,129 @@ pub fn compare(a: &Pack, b: &Pack) -> Comparison {
         value_a: a.captured_value,
         value_b: b.captured_value,
         util_a: utilization(a),
+        util_b: utilization(b),
+        added,
+        removed,
+        retained,
+    }
+}
+
+/// Scalar statistics for one manifest, paired with its included file set.
+/// Grouping these avoids threading ten positional arguments through the API.
+#[derive(Debug, Clone)]
+pub struct ManifestStats {
+    pub label: String,
+    pub included: BTreeSet<String>,
+    pub tokens_used: u64,
+    pub value: f64,
+    pub budget: u64,
+}
+
+/// Compare two manifests supplied as [`ManifestStats`]. Used by the CLI
+/// `compare` subcommand when reading manifests from disk.
+pub fn compare_sets(a: &ManifestStats, b: &ManifestStats) -> Comparison {
+    let util = |used: u64, budget: u64| {
+        if budget == 0 {
+            0.0
+        } else {
+            used as f64 / budget as f64
+        }
+    };
+    Comparison {
+        label_a: a.label.clone(),
+        label_b: b.label.clone(),
+        tokens_a: a.tokens_used,
+        tokens_b: b.tokens_used,
+        value_a: a.value,
+        value_b: b.value,
+        util_a: util(a.tokens_used, a.budget),
+        util_b: util(b.tokens_used, b.budget),
+        added: b.included.difference(&a.included).cloned().collect(),
+        removed: a.included.difference(&b.included).cloned().collect(),
+        retained: a.included.intersection(&b.included).cloned().collect(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::pack::{compile_from_scan, PackOptions};
+    use crate::scan::{ScanResult, ScannedFile};
+
+    fn sr(files: &[(&str, &str)]) -> ScanResult {
+        ScanResult {
+            kept: files
+                .iter()
+                .map(|(p, c)| ScannedFile {
+                    rel_path: (*p).into(),
+                    bytes: c.len() as u64,
+                    content: (*c).into(),
+                })
+                .collect(),
+            rejected: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn detects_added_and_removed() {
+        let files = sr(&[("a.rs", "fn budget() {}\n"), ("b.rs", "fn other() {}\n")]);
+        let small = compile_from_scan(
+            sr(&[("a.rs", "fn budget() {}\n"), ("b.rs", "fn other() {}\n")]),
+            &PackOptions {
+                budget: 4,
+                label: "small".into(),
+                ..Default::default()
+            },
+        );
+        let big = compile_from_scan(
+            files,
+            &PackOptions {
+                budget: 10_000,
+                label: "big".into(),
+                ..Default::default()
+            },
+        );
+        let cmp = compare(&small, &big);
+        assert!(cmp.tokens_b >= cmp.tokens_a);
+        assert!(cmp.retained.len() + cmp.added.len() >= 1);
+    }
+
+    #[test]
+    fn identical_packs_have_no_diff() {
+        let a = compile_from_scan(
+            sr(&[("a.rs", "fn main() {}\n")]),
+            &PackOptions {
+                budget: 1000,
+                label: "x".into(),
+                ..Default::default()
+            },
+        );
+        let b = compile_from_scan(
+            sr(&[("a.rs", "fn main() {}\n")]),
+            &PackOptions {
+                budget: 1000,
+                label: "y".into(),
+                ..Default::default()
+            },
+        );
+        let cmp = compare(&a, &b);
+        assert!(cmp.added.is_empty());
+        assert!(cmp.removed.is_empty());
+    }
+
+    #[test]
+    fn json_report_has_fields() {
+        let a = compile_from_scan(
+            sr(&[("a.rs", "fn main() {}\n")]),
+            &PackOptions {
+                budget: 1000,
+                label: "x".into(),
+                ..Default::default()
+            },
+        );
+        let cmp = compare(&a, &a);
+        let j = cmp.to_json();
+        assert!(j.contains("\"added\""));
+        assert!(j.contains("\"value_delta\""));
+    }
+}
