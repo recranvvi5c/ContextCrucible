@@ -55,3 +55,61 @@
           "redacted": "AKIA…[redacted:20 chars]"
         }
       ],
+      "explanation": "quarantined — 1 secret finding(s), highest confidence 0.97"
+    },
+    {
+      "path": "main.py",
+      "decision": "exclude:budget",
+      "tokens": 321,
+      "bytes": 620,
+      "grade": 11.6667,
+      "language": "python",
+      "score_parts": {
+        "path": 0.0000,
+        "query": 11.6667,
+        "import": 0.0000,
+        "symbol": 0.0000
+      },
+      "explanation": "not poured — grade 11.7 at 321 tokens lost the budget contest"
+    },
+    {
+      "path": "src/budget_solver.rs",
+      "decision": "include",
+      "tokens": 546,
+      "bytes": 1139,
+      "grade": 83.2500,
+      "language": "rust",
+      "score_parts": {
+        "path": 16.6667,
+        "query": 33.2500,
+        "import": 20.0000,
+        "symbol": 13.3333
+      },
+      "fill_rank": 0,
+      "explanation": "included at fill rank 0 — grade 83.2 (path 16.7/query 33.2/import 20.0/symbol 13.3) for 546 tokens"
+    },
+    {
+      "path": "src/strings.rs",
+      "decision": "exclude:budget",
+      "tokens": 454,
+      "bytes": 913,
+      "grade": 16.9167,
+      "language": "rust",
+      "score_parts": {
+        "path": 0.0000,
+        "query": 16.9167,
+        "import": 0.0000,
+        "symbol": 0.0000
+      },
+      "explanation": "not poured — grade 16.9 at 454 tokens lost the budget contest"
+    }
+  ],
+  "scan_rejected": [
+    {
+      "path": "web/bundle.min.js",
+      "decision": "exclude:scan",
+      "bytes": 174,
+      "scan_reason": "generated:suffix"
+    }
+  ]
+}
