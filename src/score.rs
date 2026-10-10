@@ -106,3 +106,219 @@ pub fn grade(rel_path: &str, content: &str, terms: &[String], import_hit: bool) 
         0.0
     } else {
         W_SYMBOL * (symbol_hits as f64 / terms.len() as f64)
+    };
+
+    ScoreParts {
+        path,
+        query,
+        import,
+        symbol,
+    }
+}
+
+/// Baseline structural score used when no query is supplied: rewards shallow
+/// paths and recognised source extensions.
+fn baseline_score(rel_path: &str) -> f64 {
+    let depth = rel_path.matches('/').count();
+    let depth_score = W_PATH * (1.0 / (1.0 + depth as f64));
+    let ext_bonus = if is_source_like(rel_path) { 6.0 } else { 0.0 };
+    (depth_score + ext_bonus).min(W_PATH)
+}
+
+fn is_source_like(rel_path: &str) -> bool {
+    const EXTS: &[&str] = &[
+        ".rs", ".ts", ".tsx", ".js", ".jsx", ".py", ".go", ".java", ".rb", ".c", ".h", ".cpp",
+        ".hpp", ".cs", ".swift", ".kt", ".php",
+    ];
+    let lower = rel_path.to_ascii_lowercase();
+    EXTS.iter().any(|e| lower.ends_with(e))
+}
+
+fn count_occurrences(haystack: &str, needle: &str) -> usize {
+    if needle.is_empty() {
+        return 0;
+    }
+    let mut count = 0;
+    let mut start = 0;
+    while let Some(pos) = haystack[start..].find(needle) {
+        count += 1;
+        start += pos + needle.len();
+    }
+    count
+}
+
+/// Extract lowercase definition names from common languages via lightweight
+/// keyword scanning. This is not a full parser — it recognises the leading
+/// token after `fn`/`def`/`class`/`struct`/`function`/`interface`/`type`.
+pub fn extract_symbols(content: &str) -> Vec<String> {
+    const KEYWORDS: &[&str] = &[
+        "fn",
+        "def",
+        "class",
+        "struct",
+        "function",
+        "interface",
+        "type",
+        "enum",
+        "trait",
+        "impl",
+        "const",
+        "let",
+        "var",
+    ];
+    let mut names = Vec::new();
+    for line in content.lines() {
+        let mut words = line.split_whitespace();
+        while let Some(w) = words.next() {
+            let clean = w.trim_start_matches(['(', '{']);
+            if KEYWORDS.contains(&clean) {
+                if let Some(name) = words.next() {
+                    let ident: String = name
+                        .chars()
+                        .take_while(|c| c.is_alphanumeric() || *c == '_')
+                        .collect::<String>()
+                        .to_ascii_lowercase();
+                    if !ident.is_empty() {
+                        names.push(ident);
+                    }
+                }
+            }
+        }
+    }
+    names.sort();
+    names.dedup();
+    names
+}
+
+/// Extract module-ish names referenced by import/use/require/include lines.
+/// Used to build the import adjacency for the import signal.
+pub fn extract_imports(content: &str) -> Vec<String> {
+    let mut mods = Vec::new();
+    for line in content.lines() {
+        let t = line.trim();
+        let lower = t.to_ascii_lowercase();
+        let payload = if lower.starts_with("use ") {
+            Some(&t[4..])
+        } else if lower.starts_with("import ") {
+            Some(&t[7..])
+        } else if lower.starts_with("from ") {
+            Some(&t[5..])
+        } else if let Some(idx) = t.find("require(") {
+            Some(&t[idx + 8..])
+        } else if lower.starts_with("#include") {
+            Some(&t[8..])
+        } else {
+            None
+        };
+        if let Some(p) = payload {
+            for frag in
+                p.split(|c: char| !(c.is_alphanumeric() || c == '_' || c == '.' || c == '/'))
+            {
+                let last = frag.rsplit(['.', '/']).next().unwrap_or(frag);
+                if last.len() >= 2 && last.chars().next().is_some_and(|c| c.is_alphabetic()) {
+                    mods.push(last.to_ascii_lowercase());
+                }
+            }
+        }
+    }
+    mods.sort();
+    mods.dedup();
+    mods
+}
+
+/// Determine whether a file participates in the import graph relevant to the
+/// query: either it imports a query-named module, or its own module stem
+/// matches a query term (so importers of it are relevant too).
+pub fn import_relevance(rel_path: &str, content: &str, terms: &[String]) -> bool {
+    if terms.is_empty() {
+        return false;
+    }
+    let stem = module_stem(rel_path);
+    if terms.iter().any(|t| stem.contains(t.as_str())) {
+        return true;
+    }
+    let imports = extract_imports(content);
+    imports
+        .iter()
+        .any(|m| terms.iter().any(|t| m.contains(t.as_str())))
+}
+
+fn module_stem(rel_path: &str) -> String {
+    let file = rel_path.rsplit('/').next().unwrap_or(rel_path);
+    let stem = file.split('.').next().unwrap_or(file);
+    stem.to_ascii_lowercase()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn query_parses_and_dedups() {
+        let q = parse_query("Budget budget SOLVER a");
+        assert_eq!(q, vec!["budget".to_string(), "solver".to_string()]);
+    }
+
+    #[test]
+    fn path_signal_rewards_matches() {
+        let terms = parse_query("budget");
+        let s = grade("src/budget.rs", "fn nothing() {}", &terms, false);
+        assert!(s.path > 0.0);
+    }
+
+    #[test]
+    fn query_signal_diminishes() {
+        let terms = parse_query("token");
+        let few = grade("a.rs", "token", &terms, false).query;
+        let many = grade("a.rs", "token token token token", &terms, false).query;
+        assert!(many > few);
+        assert!(many <= 35.0);
+    }
+
+    #[test]
+    fn symbol_signal_detects_definitions() {
+        let terms = parse_query("smelt");
+        let s = grade("a.rs", "fn smelt_ore() {}", &terms, false);
+        assert!(s.symbol > 0.0);
+    }
+
+    #[test]
+    fn extract_symbols_handles_multiple_langs() {
+        let syms = extract_symbols("fn alpha() {}\nclass Beta:\ndef gamma():");
+        assert!(syms.contains(&"alpha".to_string()));
+        assert!(syms.contains(&"beta".to_string()));
+        assert!(syms.contains(&"gamma".to_string()));
+    }
+
+    #[test]
+    fn extract_imports_handles_langs() {
+        let imports = extract_imports("use crate::budget;\nimport os\nfrom foundry import x");
+        assert!(imports.contains(&"budget".to_string()));
+        assert!(imports.contains(&"os".to_string()));
+        assert!(imports.contains(&"foundry".to_string()));
+    }
+
+    #[test]
+    fn import_relevance_via_stem() {
+        let terms = parse_query("budget");
+        assert!(import_relevance("src/budget.rs", "", &terms));
+    }
+
+    #[test]
+    fn no_query_uses_baseline() {
+        let s = grade("main.rs", "fn main() {}", &[], false);
+        assert!(s.total() > 0.0);
+        assert!(s.query == 0.0);
+    }
+
+    #[test]
+    fn total_is_clamped() {
+        let p = ScoreParts {
+            path: 40.0,
+            query: 40.0,
+            import: 40.0,
+            symbol: 40.0,
+        };
+        assert_eq!(p.total(), 100.0);
+    }
+}
