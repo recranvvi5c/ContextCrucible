@@ -19,3 +19,45 @@ function main(argv) {
     }
     let asJson = false;
     let path;
+    for (const a of args) {
+        if (a === "--json") {
+            asJson = true;
+        }
+        else {
+            path = a;
+        }
+    }
+    if (!path) {
+        process.stderr.write("crucible-explorer: missing manifest path\n");
+        return 1;
+    }
+    let text;
+    try {
+        text = readFileSync(path, "utf8");
+    }
+    catch (err) {
+        process.stderr.write(`crucible-explorer: cannot read ${path}: ${err.message}\n`);
+        return 1;
+    }
+    let manifest;
+    try {
+        manifest = parseManifest(text);
+    }
+    catch (err) {
+        process.stderr.write(`crucible-explorer: ${err.message}\n`);
+        return 1;
+    }
+    if (asJson) {
+        const payload = {
+            label: manifest.summary.label,
+            byDirectory: allocationByDirectory(manifest),
+            byLanguage: allocationByLanguage(manifest),
+        };
+        process.stdout.write(JSON.stringify(payload, null, 2) + "\n");
+    }
+    else {
+        process.stdout.write(renderReport(manifest) + "\n");
+    }
+    return 0;
+}
+process.exit(main(process.argv));
