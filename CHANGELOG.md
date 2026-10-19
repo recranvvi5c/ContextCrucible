@@ -49,3 +49,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 - Initial repository scanner and a naive greedy budget packer.
 - `crucible compile` and `crucible scan` subcommands.
+
+## [Unreleased]
+
+- Hardened the input validation and documented the contract (see the linked issues).
