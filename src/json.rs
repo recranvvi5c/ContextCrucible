@@ -47,7 +47,17 @@ impl Json {
                     // Fixed precision keeps output byte-stable across platforms.
                     let _ = write!(out, "{:.4}", f);
                 } else {
-                    out.push_str("null");
+                    // `null` already means "not measured" in the manifest, so a
+                    // non-finite value keeps its identity as a string instead of
+                    // masquerading as a missing field.
+                    let sentinel = if f.is_nan() {
+                        "NaN"
+                    } else if *f > 0.0 {
+                        "Infinity"
+                    } else {
+                        "-Infinity"
+                    };
+                    write_escaped(out, sentinel);
                 }
             }
             Json::Str(s) => write_escaped(out, s),
@@ -147,5 +157,12 @@ mod tests {
     fn empty_containers() {
         assert_eq!(Json::Array(vec![]).to_pretty().trim(), "[]");
         assert_eq!(Json::Object(vec![]).to_pretty().trim(), "{}");
+    }
+
+    #[test]
+    fn non_finite_floats_render_as_strings_not_null() {
+        assert_eq!(Json::Float(f64::NAN).to_pretty().trim(), "\"NaN\"");
+        assert_eq!(Json::Float(f64::INFINITY).to_pretty().trim(), "\"Infinity\"");
+        assert_eq!(Json::Float(f64::NEG_INFINITY).to_pretty().trim(), "\"-Infinity\"");
     }
 }
