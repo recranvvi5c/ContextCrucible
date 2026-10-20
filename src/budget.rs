@@ -162,7 +162,10 @@ fn solve_greedy(items: &[&Item], budget: u64) -> Solution {
     let mut selected: Vec<&Item> = Vec::new();
     let mut used = 0u64;
     for it in ranked {
-        if used + it.tokens <= budget {
+        // Compare against the remaining budget instead of adding to the running
+        // total: with a token mass close to u64::MAX the addition would wrap and
+        // the hard bound would silently pass.
+        if it.tokens <= budget - used {
             used += it.tokens;
             selected.push(it);
         }
